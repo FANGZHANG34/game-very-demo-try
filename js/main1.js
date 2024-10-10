@@ -22,9 +22,9 @@ GM = GM.then(protoGM=>class GM extends protoGM{
                     const previous = gamePlayer.xyz.concat();
                     for(gamePlayer.moveD = 0;gamePlayer.moveD < 4;gamePlayer.moveD++){
                         if(null !== (
-                            moveD._ === (temp = moveD['sawd'[gamePlayer.moveD]])[2] ? temp[0] ?
-                            previous[i = 0] = Math.min(Math.max(0,gamePlayer.xyz[0] + temp[0]),GM.limitWidth) :
-                            previous[i = 1] = Math.min(Math.max(0,gamePlayer.xyz[1] + temp[1]),GM.limitHeight) : null
+                            moveD._ !== (temp = moveD['sawd'[gamePlayer.moveD]])[2] ? null :
+                            temp[0] ? previous[i = 0] = Math.min(Math.max(0,gamePlayer.xyz[0] + temp[0]),GM.limitWidth) :
+                            previous[i = 1] = Math.min(Math.max(0,gamePlayer.xyz[1] + temp[1]),GM.limitHeight)
                         )){break;}
                     }
                     previous[i] !== gamePlayer.xyz[i] && protoGM.instance.gameMap.onDirectionEvent(previous) &&
@@ -186,7 +186,6 @@ GM = GM.then(protoGM=>class GM extends protoGM{
                             }
                             break;
                         }
-                        case 'characterList': this.gameBody.menu.board.characterGame.checker(temp);break;
                         default:{
                             // 三维click2move
                             var temp = e.target;
@@ -229,7 +228,7 @@ GM = GM.then(protoGM=>class GM extends protoGM{
             if(!gamePrompt.zone.classList.contains('disappear') && document.activeElement !== gamePrompt.resolveContent) gamePrompt.checker(
                 'enter' === temp ? gamePrompt.resolveBtn : 'control' === temp ? gamePrompt.rejectBtn : {}
             ); else switch(temp){
-                case 'c': this.gamePlayer.photo.self.classList.toggle('disappear');break;
+                case 'c': GM.Character.photo.self.classList.toggle('disappear');break;
                 case 'q': this.gameMessage.self.classList.toggle('disappear');break;
                 case 'control': this.gameMap.mapID && this.gameBody.menu.self.classList.toggle('disappear');break;
             }
@@ -246,18 +245,16 @@ GM = GM.then(protoGM=>class GM extends protoGM{
     // .focus() 聚焦主角方位
     static Character = class Character{
         constructor(isPlayer = false){
+            /**@type {HTMLDivElement} */
             this.self = isPlayer ? document.getElementById('player') : Character.tempNode.cloneNode(true);
-            this.display = this.self.firstChild;
+            this.display = this.self.firstElementChild;
         }
         static photo = new class{
             self = document.getElementById('playerPhoto');
             loader(imageUrl){getImage(imageUrl).then(value=>clearCanvas(this.self).drawImage(value,0,0));}
         };
-        /**
-         * @type {HTMLDivElement}
-         */
-        static tempNode = '<div class="mapObject"><canvas width="120" height="120"></canvas></div>'.toDom();
-        id;
+        static tempNode = RealElement.getDomByString('<div class="mapObject"><canvas width="120" height="120"></canvas></div>');
+        id = -1;
         xyz = [];
         moveD = 0;
         /**
@@ -273,7 +270,7 @@ GM = GM.then(protoGM=>class GM extends protoGM{
                 (!this.self.style.zIndex || xyz[2] !== +this.self.style.zIndex) && (this.self.style.zIndex = String(xyz[2])),
                 moveKeyframes[0].translate = `${xyz[0] * GM.singleStepLength}px ${xyz[1] * GM.singleStepLength}px 0px`
             ),appear && (
-                this.id = id,this.display = this.self.firstChild,moveKeyframes[1] = Object.assign({},moveKeyframes[0]),
+                this.id = id,this.display = this.self.firstElementChild,moveKeyframes[1] = Object.assign({},moveKeyframes[0]),
                 getImage(memoryHandle('characterArray.'+id+'.display')).then(value=>(
                     value ? clearCanvas(this.display).drawImage(value,0,0) : console.error('=> Wrong character display: '+id)
                 ))
@@ -300,51 +297,11 @@ GM = GM.then(protoGM=>class GM extends protoGM{
         this.constTemp.moveConfig.duration = ~~(4000 / num);
         this.setGameInterval('playerMove',~~(1000 / num) + 1,2);
     }
-    // 设置全局的函数、常量和变量
-
-    // configArray 本地配置
-    // hoverAudio 鼠标音效元素
-    // clickAudio 点击音效元素
-    // singleStepLength 单位长度
-    // mapWidth,mapHeight 地图相对长度
-    // limitWidth,limitHeight 地图坐标限制
-    // mapRealWidth,mapRealHeight 地图实际长度
-    /**
-     * @type {{globalArray: {
-     * globalVolume: .25,bgm: .5,bgs: .25,dialogue: .75,
-     * textSep: 50,worldSpeed: 30,modeHard: 0
-     * }}}
-     */
-    static configArray = JSON.parse(LZString.decompress(localStorage.getItem('configArray')));
-    static singleStepLength = 60;
-    static mapWidth = 32;
-    static mapHeight = 18;
-    static limitWidth = GM.mapWidth - 1;
-    static limitHeight = GM.mapHeight - 1;
-    static mapRealWidth = GM.mapWidth * GM.singleStepLength;
-    static mapRealHeight = GM.mapHeight * GM.singleStepLength;
-
-    get configArray(){return GM.configArray;}
-    get singleStepLength(){return GM.singleStepLength;}
-    get mapWidth(){return GM.mapWidth;}
-    get mapHeight(){return GM.mapHeight;}
-    get limitWidth(){return GM.mapWidth - 1;}
-    get limitHeight(){return GM.mapHeight - 1;}
-    get mapRealWidth(){return GM.mapWidth * GM.singleStepLength;}
-    get mapRealHeight(){return GM.mapHeight * GM.singleStepLength;}
     // GM 游戏元素管理员，其属性包含了所有游戏元素
     // 大多数游戏元素都有self属性以指向其本体HTMLElement
 
     // GM 游戏管理者，游戏基框架的集合对象
-    // .isgameTipping 布尔值，表示游戏提示元素是否显现，请勿修改！
-    // .promiseArray 承诺数组
     // .constTemp 游戏常量对象集合
-    // .hoverAudio 鼠标移动至选项而使用的音频元素
-    // .clickAudio 鼠标点击而使用的音频元素
-    // .makePromise() 在该脚本执行完后进行补丁操作
-    // .setGameInterval() 设置游戏循环计时器的ID
-    // .bgs() 一次性地使用游戏音效
-    isgameTipping = false;
     static constTemp = new class{
         memory;
         tempCanvas = makeElement('canvas',{width: 1920,height: 1080});
@@ -356,8 +313,6 @@ GM = GM.then(protoGM=>class GM extends protoGM{
         moveConfig = {duration: 133,fill: 'forwards'};
     };
     get constTemp(){return GM.constTemp;}
-    hoverAudio = new Audio('./audio/1.ogg');
-    clickAudio = new Audio('./audio/Cancel2.ogg');
     bgm = new class BGM{
         // bgm 背景音乐
         // .report() 报告音频
@@ -408,9 +363,7 @@ GM = GM.then(protoGM=>class GM extends protoGM{
 
     // gameBody 游戏大元素集合
     // .menu 菜单元素
-    // .gameTip 游戏提示
     // .menuBoard 选项对应面板对象
-    // .gameTip.tipFn() 开关游戏提示
     gameBody = new class GameBody{
         static self = document.getElementById('gameBody');
         get self(){return GameBody.self;}
@@ -421,25 +374,27 @@ GM = GM.then(protoGM=>class GM extends protoGM{
                 title: {self: document.getElementById('guide')},
                 characterGame: new class{
                     self = document.getElementById('characterBoard');
-                    list = new RealElement({
-                        self: document.getElementById('characterList'),
-                        key: 'innerHTML',
-                        initValue: [],
-                        transform(value){
-                            return value?.[Symbol.iterator] ? value.reduce(
-                                (temp,id)=>(temp.push('<div>',memoryHandle('characterArray.'+id+'.name'),'</div>'),temp),[]
-                                // ['<div>',memoryHandle('characterArray.'+protoGM.instance.gamePlayer.id+'.name'),'</div>']
-                            ).join('') : '';
-                        }
-                    },{
-                        set(value){
-                            const temp = this.value,playerID = protoGM.instance.gamePlayer.id;
-                            value = !value?.[Symbol.iterator] ? [playerID] : [playerID,...value];
-                            return (temp.length !== value.length || !compareArray(temp,value,value.length)) &&
-                            (this.proto.value = Array.from(value));
-                        }
-                    });
-                    info = new RealElement({self: document.getElementById('characterInfo'),key: 'innerHTML'},{react(){this.set('');}});
+                    list =
+                    // new RealElement({
+                    //     self: document.getElementById('characterList'),
+                    //     key: 'innerHTML',
+                    //     initValue: [],
+                    //     transform(value){
+                    //         return value?.[Symbol.iterator] ? value.reduce(
+                    //             (temp,id)=>(temp.push('<div>',memoryHandle('characterArray.'+id+'.name'),'</div>'),temp),[]
+                    //             // ['<div>',memoryHandle('characterArray.'+protoGM.instance.gamePlayer.id+'.name'),'</div>']
+                    //         ).join('') : '';
+                    //     }
+                    // },{
+                    //     set(value){
+                    //         const temp = this.value,playerID = protoGM.instance.gamePlayer.id;
+                    //         value = !value?.[Symbol.iterator] ? [playerID] : [playerID,...value];
+                    //         return (temp.length !== value.length || !compareArray(temp,value,value.length)) &&
+                    //         (this.proto.value = Array.from(value));
+                    //     }
+                    // }) ||
+                    new RealDivList('characterList',false,({target})=>protoGM.instance.gameBody.menu.board.characterGame.checker(target));
+                    info = new RealElement({self: document.getElementById('characterInfo'),key: 'innerHTML'},{react(){this.set('',false,true);}});
                     itemBoard = document.getElementById('itemBoard');
                     photo = document.getElementById('characterPhoto');
                     partner;
@@ -447,7 +402,8 @@ GM = GM.then(protoGM=>class GM extends protoGM{
                     loader(){
                         if(!GM.constTemp.memory) return;
                         this.nowCharacterID = null;
-                        this.list.value = this.partner = protoGM.instance.gameFileSL.origin[0].partner;
+                        this.list.value = [protoGM.instance.gamePlayer.id,...(this.partner = protoGM.instance.gameFileSL.origin[0].partner)].
+                        map(id=>memoryHandle('characterArray.'+id+'.name'));
                     }
                     /**
                      * 
@@ -483,19 +439,6 @@ GM = GM.then(protoGM=>class GM extends protoGM{
                         GM.configArray.globalArray.globalVolume * GM.configArray.globalArray.bgs;
                     }
                 }
-            }
-        };
-        gameTip = new class GameTip{
-            static self = document.getElementById('gameTip');
-            get self(){return GameTip.self;}
-            tipFn(mouseEvent,isTip = true){
-                var x,y,temp;
-                isTip ? (
-                    x = (temp = mouseEvent.clientX) * 2 < (x = getWindowWidth()) ? temp + 32 : temp - 32 - x / 5,
-                    y = (temp = mouseEvent.clientY) * 2 < (y = getWindowHeight()) ? temp + 18 : temp - 18 - this.self.scrollHeight,
-                    this.self.style.translate = x+'px '+y+'px 0px',
-                    GM.isgameTipping ||= (this.self.classList.remove('disappear'),true)
-                ) : GM.isgameTipping &&= (this.self.classList.add('disappear'),false);
             }
         };
         gamePrompt = new class GamePrompt{
@@ -628,7 +571,7 @@ GM = GM.then(protoGM=>class GM extends protoGM{
             nodeArray = [];
             /**
              * 
-             * @param {...{}} characterInfoArray 
+             * @param {{id: Number,xyz: Number[]}[]} characterInfoArray 
              */
             characterLoader(characterInfoArray){
                 var i,object;for(object of this.nodeArray){i.self.remove();}
@@ -739,13 +682,14 @@ GM = GM.then(protoGM=>class GM extends protoGM{
     // .closer() 关闭
     gameMessage = new class{
         self = document.getElementById('gameMessage');
+        /**@type {{resolve()=>void,promise: Promise<void>,finallyFn()=>*,isFulfilled: Boolean}[]} */
         messageArray = [];
         /**
          * 
          * @param {{name: String | undefined,faceUrl: String | undefined}} param0 
          * @param {{text: String | undefined,audioUrl: String | undefined,imageUrl: String | undefined,videoUrl: String | undefined}} param1 
-         * @param {{string: any}} choiceArray
-         * @param {(() => any) | undefined} finallyFn 
+         * @param {{[key: String]: ()=>*}} choiceArray
+         * @param {(() => *) | undefined} finallyFn 
          */
         loader({name,faceUrl} = {},{text,audioUrl,imageUrl,videoUrl} = {},choiceArray = {},finallyFn){
             this.reset(),protoGM.instance.processArray.playerMove.paused ||= true,
@@ -778,7 +722,7 @@ GM = GM.then(protoGM=>class GM extends protoGM{
         }
         simpleClear(){
             const {isFulfilled,finallyFn} = this.messageArray.pop();
-            if(!isFulfilled) throw false; else return finallyFn instanceof Function && finallyFn();
+            if(!isFulfilled) throw false; else return finallyFn instanceof Function && finallyFn?.();
         }
         /**
          * 
@@ -904,14 +848,14 @@ GM = GM.then(protoGM=>class GM extends protoGM{
             }
             /**
              * 
-             * @param {{string: any}} choiceArray 
+             * @param {{[key: String]: ()=>*}} choiceArray 
              * @returns {HTMLDivElement[]}
              */
             setChoiceArray(choiceArray){
                 const nodeArray = [];
                 for(let i of Object.keys(choiceArray)){
                     nodeArray.push(this.choice.insertAdjacentElement('beforeend',makeElement(
-                        'div',{textContent: i,onclick: ()=>Promise.resolve(choiceArray[i]())}
+                        'div',{textContent: i,onclick: choiceArray[i]}
                     )));
                 }
                 return nodeArray.length && classNameAddOrRemove('disappear',this.choice,this.dialogue),nodeArray;

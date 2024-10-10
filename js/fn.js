@@ -40,11 +40,15 @@ function strN(N,longN){return longN > (N = String(N)).length ? strN(N = '0'+N,lo
 function timeSuper(constructor){const t0 = Date.now();constructor();return Date.now() - t0;}
 /**
  * makeElement 定制元素
- * @param {String} tagName 
- * @param {{}} config 
+ * @param {String | target = HTMLElement} tagName 
+ * @param {{[attr: String]: String}} config 
+ * @param {{[attr: String]: String}} cssConfig 
  * @returns {HTMLElement}
  */
-function makeElement(tagName,config){return Object.assign(document.createElement(tagName),config);}
+function makeElement(tagName,config,cssConfig){
+    tagName instanceof HTMLElement || (tagName = document.createElement(tagName));
+    return Object.assign(Object.assign(tagName,config).style,cssConfig),tagName;
+}
 /**
  * clearMedia 清空媒体内容
  * @param {HTMLAudioElement | HTMLVideoElement} mediaElement 
@@ -66,8 +70,8 @@ function compareArray(arr0,arr1,length){
 }
 /**
  * timeRecord 过程计时
- * @param {(() => any) | never} promise 
- * @returns {Promise<{value: any | Error,time: Number}>} 
+ * @param {(() => target) | Promise<target>} promise 
+ * @returns {Promise<{value: target | Error,time: Number}>} 
  */
 async function timeRecord(promise){
     const t0 = Date.now();
@@ -75,14 +79,12 @@ async function timeRecord(promise){
 }
 /**
  * copyObj 深复制对象
- * @param {never} obj 
- * @returns {never}
  */
 function copyObj(obj){
-    var newobj,i;
-    if(obj instanceof Object){
-        newobj = obj instanceof Array ? [] : {};
-        for(i of Object.keys(obj)){i.charCodeAt(0) === 95 || (newobj[i] = copyObj(obj[i]));}
+    var newobj;
+    if(obj === Object(obj)){
+        newobj = Array.isArray(obj) ? [] : {};
+        for(const i of Object.keys(obj)){i.charCodeAt(0) === 95 || (newobj[i] = copyObj(obj[i]));}
     }else{newobj = obj;}
     return newobj;
 }
@@ -154,7 +156,7 @@ function classNameAddOrRemove(className,remove4element = null,add4element = null
 /**
  * cb2promise 回调转异步类
  * @param {{thisArg: {},methodName: String,callback: (...value)=>"this.resolve(value)"}} param0 
- * @param  {...any} parameters 
+ * @param  {...*} parameters 
  * @returns {Promise<value>}
  */
 function cb2promise({thisArg,methodName,callback = function(...value){this.resolve(value);}} = {},...parameters){
@@ -243,7 +245,7 @@ function loadCartoon({
  * memoryHandle 记忆信息操作
  * @param {String} pathString 
  * @param {'r' | 'w' | 'fn'} mode 
- * @param {any | (parentObject: {},key2: String) => any} value_fn 
+ * @param {* | (parentObject: {},key2: String) => *} value_fn 
  * @param {{} | GM.constTemp.memory} thisMemory 
  */
 function memoryHandle(
@@ -294,8 +296,8 @@ function getRandomDiractionUT(seedN){
 }
 /**
  * objArrayFilter  对象清洗
- * @param {{}[]} objArray 
- * @param {(value: any) => Boolean} callback 
+ * @param {{[text: String]: Number}[]} objArray 
+ * @param {(value: *) => Boolean} callback 
  * @returns {(String | {})[]}
  */
 function objArrayFilter(objArray,callback,toStringArray = true,isReverse = true){
