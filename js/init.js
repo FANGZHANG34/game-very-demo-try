@@ -138,6 +138,8 @@ RealElement.addCSSRules('',{
         'text-align':'center',
         'align-content':'center',
     }
+})('.autoFull',{
+    '':{'width':'100vmax','height':'100vmin'}
 })
 ;
 var GM = timeRecord(new Promise(r=>window.onload = r)).then(result=>(console.log('=> Load window in',result.time,'ms'),class protoGM{
@@ -205,12 +207,11 @@ var GM = timeRecord(new Promise(r=>window.onload = r)).then(result=>(console.log
         var temp,i;
         protoGM.setDefaultStyle();
         document.body.innerHTML = '';
-        document.body.classList.add('coverBody','scrollNone');
+        document.body.classList.add('autoFull','scrollY');
         // document.body.classList.add('scrollXY');
         (this.self = new RealDivList('mainBody',true,[
             ((this.map = new RealDivList('gameMap',true,[
-                new RealCanvas,new RealCanvas,new RealCanvas,new RealCanvas,
-                '<canvas id="gameEffect"></canvas>',
+                ...(this.mapArray = [new RealCanvas,new RealCanvas,new RealCanvas,new RealCanvas,new RealCanvas('gameEffect')]).map(i=>i.self),
                 ((this.mapBoard = new RealDivList(
                     'gameMapBoard',
                     true,
@@ -236,10 +237,8 @@ var GM = timeRecord(new Promise(r=>window.onload = r)).then(result=>(console.log
         this.mainDict.gameTip.addClassName('disappear');
         this.mainDict.gamePrompt.addClassName('disappear');
         // map
-        this.mapArray = this.map.childrenList.flat().slice(0,i = 5);
         temp = {width: protoGM.mapRealWidth,height: protoGM.mapRealHeight};
-        while(i --> 0){Object.assign(this.mapArray[i],temp);}
-        this.mapArray.pop();
+        for(i = this.mapArray.length;i --> 0;) Object.assign(this.mapArray[i],temp);
         // message
         (this.message = new RealDivList('gameMessage',true,[
             '<div></div><canvas></canvas>',
@@ -267,14 +266,11 @@ var GM = timeRecord(new Promise(r=>window.onload = r)).then(result=>(console.log
                 '<div id="gameExport"></div>',
                 '<div id="gameReset"></div>',
             ]),
-            new RealElement({self: document.getElementById('gameMenuBG')},{
-                info: Object.assign(new Image,{onload(){clearCanvas(protoGM.realWorld.menu[2].self).drawImage(this,0,0)}}),
-                set(value){return this.proto.value = this.info.src = String(value),false;},
-            }),
+            new RealCanvas('gameMenuBG'),
         ];
         this.menu[2].applyCSS('',{'':{'position':'absolute'}});
         this.menu[2].addClassName('coverBody');
-        RealElement.makeElement(this.menu[2].self,temp);
+        Object.assign(this.menu[2],temp);
         this.menu[2].value = './img/bg.png';
         this.menu1Array = this.menu[1].getRealEmentList();
         temp = this.menu1Array.length;

@@ -297,7 +297,7 @@ class RealNode{
     /**
      * 
      * @param {{get?: ()=>*,set?: (value)=>Boolean,react?: ()=>void,id?,info?,value?}} config 
-     * @param  {...(Symbol | RealNode)} relativeRNs 
+     * @param  {...(Symbol | RealNode)} [relativeRNs] 
      */
     constructor(config,tryRealNode = true,...relativeRNs){
         const {get,set,react,id,info} = Object(config);
@@ -485,7 +485,7 @@ class RealElement extends RealNode{
      * @param {{self: HTMLElement,key,transform?: (value)=>*},initValue} param0 
      * @param {{get?: ()=>*,set?: (value)=>Boolean,react?: ()=>void,id?,info?,value?}} [config] 
      * @param {Boolean} [tryRealNode] 
-     * @param  {...RealNode} relativeRNs 
+     * @param  {...RealNode} [relativeRNs] 
      */
     constructor({self,key,transform,initValue},config = {},tryRealNode,...relativeRNs){
         super(config,tryRealNode,...relativeRNs);
@@ -497,26 +497,55 @@ class RealElement extends RealNode{
     }
 }
 class RealCanvas extends RealElement{
-    /**@typedef {AntiHTMLNode & {self: HTMLCanvasElement,ctx: CanvasRenderingContext2D,img: HTMLImageElement}} AntiCanvas */
+    /**@typedef {AntiHTMLNode & {
+     * self: HTMLCanvasElement;
+     * img: HTMLImageElement;
+     * clearBeforeDraw: Boolean;
+     * ctx: CanvasRenderingContext2D;
+     * }} AntiCanvas */
     static proto = class AntiCanvas extends RealElement.proto{
         img = new Image;
         isElement = true;
+        clearBeforeDraw = true;
         /**@type {CanvasRenderingContext2D} */
-        ctx = this.self.getContext('2d');
+        ctx;
     }
+    protoGet(){return this.loaded.then(()=>this.proto.value);}
     fix(){(this.clearBeforeDraw ? this.clear() : this.proto.ctx).drawImage(this.proto.img,0,0);}
     clear(){return this.proto.ctx.clearRect(0,0,this.proto.self.width,this.proto.self.height),this.proto.ctx.closePath(),this.proto.ctx;}
+    /**
+     * 
+     * @param {String} src 
+     */
     protoSet(src){
-        return loaded = this.loaded.then(()=>new Promise((r,e)=>Object.assign(this.proto.img,{onload: r,onerror: e}).src = src))
-        .then(()=>(this.proto.value = src,true),e=>(console.error(e ? e : this+': Fail to load by src !'),false));
+        return this.loaded = this.loaded.then(()=>new Promise((r,e)=>Object.assign(this.proto.img,{onload: r,onerror: e}).src = src))
+        .then(()=>(this.proto.value = src,true),e=>(console.error(e instanceof Error ? e : this+': Fail to load by src "'+src+'" !'),false));
     }
+    /**
+     * 
+     * @param {Boolean} react 
+     * @param {Boolean} notify 
+     * @param {Boolean} noSelf 
+     * @returns {Promise<Boolean>}
+     */
     realSet(value,react,notify,noSelf){
         var temp;
-        return Promise.resolve(this.proto._set.call(
+        return this.loaded = Promise.resolve(this.proto._set.call(
             this,
             this.proto.tryRealNode && (temp = this.computePositionsOfRNs(value)).length ?
             this.dealWithPositionsOfRNs(temp,value) : value
         )).then(value=>value && (this.fix(),react && this.react?.(),notify && this.notify(noSelf),true));
+    }
+    async multiDrawSrcArray({bgSrc,autoOpacity},...srcArray){
+        const clearBeforeDraw = this.clearBeforeDraw,opacity = await this.opacity;
+        var i,temp;
+        this.clearBeforeDraw = false;
+        if(Array.isArray(bgSrc)){for(i = -1,temp = bgSrc.length;temp >++ i;) this.value = bgSrc[i];}
+        else 'string' === typeof bgSrc && (this.value = bgSrc);
+        if(srcArray.length > 1 && autoOpacity){for(i = srcArray.length,temp = 0;i --> 0;){
+            this.opacity = Math.log10(10 / 2 ** i) * opacity,this.value = srcArray[temp++];
+        }}else{for(i = -1,temp = srcArray.length;temp >++ i;) this.value = srcArray[i];}
+        return this.loaded = this.loaded.then(()=>{this.clearBeforeDraw = clearBeforeDraw;});
     }
     get ctx(){return this.proto.ctx;}
     get img(){return this.proto.img;}
@@ -525,21 +554,40 @@ class RealCanvas extends RealElement{
     get height(){return this.proto.self.height;}
     get imgW(){return this.proto.img.naturalWidth;}
     get imgH(){return this.proto.img.naturalHeight;}
-    get opacity(){return this.proto.ctx.globalAlpha;}
+    get opacity(){return this.loaded.then(()=>this.proto.ctx.globalAlpha);}
+    get clearBeforeDraw(){return this.loaded.then(()=>this.proto.clearBeforeDraw);}
+    set self(self){this.proto.self ??= self;}
     set width(width){this.proto.self.width = width ?? 640;}
-    set opacity(opacity){this.proto.ctx.globalAlpha = opacity;}
     set height(height){this.proto.self.height = height ?? 360;}
+    set opacity(opacity){
+        const loaded = this.loaded;
+        this.loaded = Promise.resolve(opacity).then(value=>loaded.then(()=>{this.proto.ctx.globalAlpha = value;}));
+    }
+    set clearBeforeDraw(clearBeforeDraw){
+        const loaded = this.loaded;
+        this.loaded = Promise.resolve(clearBeforeDraw).then(value=>loaded.then(()=>{this.proto.clearBeforeDraw = value;}));
+    }
     loaded = RealNode.now;
-    clearBeforeDraw = true;
-    constructor(id,width,height,...relativeRNs){
-        id = String(id);
-        const self = document.getElementById(id);
-        if(self && !(self instanceof HTMLCanvasElement)) throw new Error('=> RealCanvas with id "'+id+'" is not HTMLCanvasElement !');
-        super({self: self ?? RealElement.makeElement('canvas',{id})},{id},true,...relativeRNs);
+    /**
+     * 
+     * @param [id] 
+     * @param {Number} [width] 
+     * @param {Number} [height] 
+     * @param {Boolean} [tryRealNode] 
+     * @param  {...RealNode} [relativeRNs] 
+     */
+    constructor(id,width,height,tryRealNode,...relativeRNs){
+        const self = ('string' === typeof id || (id = '',false)) && document.getElementById(id);
+        console.log(id,self?.parentElement);
+        self && self.tagName.toLocaleLowerCase() !== 'canvas' &&
+        RealNode.error('=> "id" exists but not within an HTMLCanvasElement !');
+        RealElement.addId(id,!self);
+        super({self: self || RealElement.makeElement('canvas',{id})},{id},tryRealNode,...relativeRNs);
         /**@type {AntiCanvas} */
         this.proto;
         this.width = width;
         this.height = height;
+        this.rememberParent().proto.ctx = this.proto.self.getContext('2d');
     }
 }
 class RealDivList extends RealElement{
